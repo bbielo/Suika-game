@@ -1,6 +1,10 @@
 "use client";
 
+import { useRef } from "react";
+
 export default function SuikaGameCanvas() {
+    const sceneRef = useRef<HTMLDivElement | null>(null);
+
     return (
         <main className="min-h-screen flex items-center justify-center bg-neutral-100">
             <div className="w-[400px]">
@@ -14,9 +18,10 @@ export default function SuikaGameCanvas() {
                         </button>
                     </div>
 
-                    <div className="flex h-[600px] items-center justify-center rounded bg-neutral-200">
-                        Game Area
-                    </div>
+                    <div
+                        ref={sceneRef}
+                        className="relative h-[600px] overflow-hidden rounded bg-neutral-200"
+                    />
                 </div>
             </div>
         </main>
