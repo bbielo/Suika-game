@@ -1,13 +1,14 @@
 "use client";
 
 import { useRef } from "react";
+import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
 
 export default function SuikaGameCanvas() {
     const sceneRef = useRef<HTMLDivElement | null>(null);
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-neutral-100">
-            <div className="w-[400px]">
+            <div style={{ width: GAME_WIDTH }}>
                 <h1 className="mb-4 text-center text-3xl font-bold">Suika Game</h1>
 
                 <div className="rounded-xl bg-white p-4 shadow">
@@ -20,7 +21,8 @@ export default function SuikaGameCanvas() {
 
                     <div
                         ref={sceneRef}
-                        className="relative h-[600px] overflow-hidden rounded bg-neutral-200"
+                        style={{ height: GAME_HEIGHT }}
+                        className="relative overflow-hidden rounded bg-neutral-200"
                     />
                 </div>
             </div>
