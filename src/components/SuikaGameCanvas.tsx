@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Engine, Render, Runner } from "matter-js";
+import { Bodies, Engine, Render, Runner, World } from "matter-js";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
 import { createGameEngine } from "@/game/engine";
 
@@ -23,10 +23,28 @@ export default function SuikaGameCanvas() {
             },
         });
 
+        // 클릭시 과일 생성
+        const handleClick = (event: MouseEvent) => {
+            const rect = sceneRef.current!.getBoundingClientRect();
+
+            // 클릭한 x 좌표 구하기
+            const x = event.clientX - rect.left;
+
+            // 클릭한 위치에 test용 과일 생성
+            const fruit = Bodies.circle(
+                x, 50, 20, { restitution: 0.2});
+            World.add(engine.world, fruit);
+        };
+
+        sceneRef.current!.addEventListener("click", handleClick);
+
         Runner.run(runner, engine);
         Render.run(render);
 
         return () => {
+            // 클릭 이벤트 제거
+            sceneRef.current?.removeEventListener("click", handleClick);
+
             Render.stop(render);
             Runner.stop(runner);
             Engine.clear(engine);

@@ -15,9 +15,6 @@ export function createGameEngine() {
     const leftWall = Bodies.rectangle(-10, GAME_HEIGHT / 2, wallThickness, GAME_HEIGHT, { isStatic: true });
     const rightWall = Bodies.rectangle(GAME_WIDTH - 22, GAME_HEIGHT / 2, wallThickness, GAME_HEIGHT, { isStatic: true } );
 
-    //  test: 과일 추가
-    const fruit = Bodies.circle(GAME_WIDTH / 2, 50, 20, { restitution: 0.2 });
-
-    World.add(engine.world, [ground, leftWall, rightWall, fruit]);
+    World.add(engine.world, [ground, leftWall, rightWall]);
     return engine;
 }
