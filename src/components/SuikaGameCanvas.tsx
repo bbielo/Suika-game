@@ -1,10 +1,20 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
+import { createGameEngine } from "@/game/engine";
 
 export default function SuikaGameCanvas() {
     const sceneRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        // test : Matter.js 엔진 생성
+        const engine = createGameEngine();
+        console.log("Matter.js engine created:", engine);
+        return () => {
+            console.log("SuikaGameCanvas unmounted");
+        };
+    }, []);
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-neutral-100">
