@@ -30,6 +30,9 @@ export default function SuikaGameCanvas() {
             Render.stop(render);
             Runner.stop(runner);
             Engine.clear(engine);
+
+            render.canvas.remove();
+            render.textures = {};
         };
     }, []);
 
