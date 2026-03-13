@@ -11,11 +11,13 @@ export function createGameEngine() {
 
     // space 설정 : (x, y, 너비, 높이, {고정 true})
     const wallThickness = 20;
-
     const ground = Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + wallThickness / 2, GAME_WIDTH, wallThickness, { isStatic: true } );
-    const leftWall = Bodies.rectangle(0, GAME_HEIGHT / 2, wallThickness, GAME_HEIGHT, { isStatic: true });
-    const rightWall = Bodies.rectangle(GAME_WIDTH, GAME_HEIGHT / 2, wallThickness, GAME_HEIGHT, { isStatic: true } );
+    const leftWall = Bodies.rectangle(-10, GAME_HEIGHT / 2, wallThickness, GAME_HEIGHT, { isStatic: true });
+    const rightWall = Bodies.rectangle(GAME_WIDTH - 22, GAME_HEIGHT / 2, wallThickness, GAME_HEIGHT, { isStatic: true } );
 
-    World.add(engine.world, [ground, leftWall, rightWall]);
+    //  test: 과일 추가
+    const fruit = Bodies.circle(GAME_WIDTH / 2, 50, 20, { restitution: 0.2 });
+
+    World.add(engine.world, [ground, leftWall, rightWall, fruit]);
     return engine;
 }
