@@ -12,7 +12,11 @@ export function createGameEngine() {
 
     // 바닥설정 (x, y, 너비, 높이, {고정 true})
     const ground = Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 10, GAME_WIDTH, 20, { isStatic: true });
-    World.add(engine.world, ground);
-
+    
+    // 벽 설정
+    const leftWall = Bodies.rectangle(-10, GAME_HEIGHT / 2, 20, GAME_HEIGHT, { isStatic: true });
+    const rightWall = Bodies.rectangle(GAME_WIDTH -22, GAME_HEIGHT / 2, 20, GAME_HEIGHT, { isStatic: true });
+    
+    World.add(engine.world, [ground, leftWall, rightWall]);
     return engine;
 }
