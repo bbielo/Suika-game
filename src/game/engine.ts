@@ -1,4 +1,5 @@
-import { Engine, Bodies, World } from "matter-js";
+import { Bodies, Engine, World } from "matter-js";
+import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
 
 export function createGameEngine() {
 
@@ -10,7 +11,7 @@ export function createGameEngine() {
     engine.gravity.y = 1;
 
     // 바닥설정 (x, y, 너비, 높이, {고정 true})
-    const ground = Bodies.rectangle(200, 610, 400, 20,{ isStatic: true });
+    const ground = Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 10, GAME_WIDTH, 20, { isStatic: true });
     World.add(engine.world, ground);
 
     return engine;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Engine, Render, Runner } from "matter-js";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
 import { createGameEngine } from "@/game/engine";
 
@@ -8,11 +9,27 @@ export default function SuikaGameCanvas() {
     const sceneRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        // test : Matter.js 엔진 생성
         const engine = createGameEngine();
-        console.log("Matter.js engine created:", engine);
+        const runner = Runner.create();
+
+        const render = Render.create({
+            element: sceneRef.current!,
+            engine: engine,
+            options: {
+                width: GAME_WIDTH,
+                height: GAME_HEIGHT,
+                wireframes: false,
+                background: "#e5e5e5",
+            },
+        });
+
+        Runner.run(runner, engine);
+        Render.run(render);
+
         return () => {
-            console.log("SuikaGameCanvas unmounted");
+            Render.stop(render);
+            Runner.stop(runner);
+            Engine.clear(engine);
         };
     }, []);
 
