@@ -9,11 +9,14 @@ export default function SuikaGameCanvas() {
     const sceneRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
+
+        if (!sceneRef.current) return;
+
         const engine = createGameEngine();
         const runner = Runner.create();
 
         const render = Render.create({
-            element: sceneRef.current!,
+            element: sceneRef.current,
             engine: engine,
             options: {
                 width: GAME_WIDTH,
@@ -35,12 +38,10 @@ export default function SuikaGameCanvas() {
             fruitLevel: number;
         };
 
-
         // 클릭시 과일 생성
         const handleClick = (event: MouseEvent) => {
-            const rect = sceneRef.current!.getBoundingClientRect();
 
-            // 클릭한 x 좌표 구하기
+            const rect = render.canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
 
             const fruit = Bodies.circle(x, 50, FRUITS[0].radius, { restitution: 0.2,render: {fillStyle: FRUITS[0].color}}) as FruitBody;              // FruitBody 타입으로 변환
@@ -49,11 +50,8 @@ export default function SuikaGameCanvas() {
             World.add(engine.world, fruit);
         };
 
-        sceneRef.current!.addEventListener("click", handleClick);
+        render.canvas.addEventListener("click", handleClick);
 
-
-
-        // 충돌이벤트 생성
         Events.on(engine, "collisionStart", (event) => {
 
             event.pairs.forEach((pair) => {
@@ -66,7 +64,7 @@ export default function SuikaGameCanvas() {
 
                 const level = a.fruitLevel;
 
-                // if (level >= FRUITS.length - 1) return;
+                if (level >= FRUITS.length - 1) return;
 
                 const newLevel = level + 1;
 
@@ -97,8 +95,8 @@ export default function SuikaGameCanvas() {
         Render.run(render);
 
         return () => {
-            // 클릭 이벤트 제거
-            sceneRef.current?.removeEventListener("click", handleClick);
+
+            render.canvas.removeEventListener("click", handleClick);
 
             Render.stop(render);
             Runner.stop(runner);
@@ -108,7 +106,7 @@ export default function SuikaGameCanvas() {
             render.textures = {};
         };
     }, []);
-    
+
     return (
         <main className="min-h-screen flex items-center justify-center bg-neutral-100">
             <div style={{ width: GAME_WIDTH }}>
