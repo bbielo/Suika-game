@@ -28,14 +28,15 @@ export default function SuikaGameCanvas() {
 
         // [TODO]: 과일 이미지 삽입
         const FRUITS = [
-            { radius: 20, color: "#ffcc00" }, // level 0
-            { radius: 30, color: "#ff9900" }, // level 1
-            { radius: 40, color: "#ff6600" }, // level 2
+            { radius: 20, color: "#ffcc00" },
+            { radius: 30, color: "#ff9900" },
+            { radius: 40, color: "#ff6600" },
         ];
 
         // fix: Body내 속성에 fruitLevel 생성
         type FruitBody = Matter.Body & {
             fruitLevel: number;
+            merged?: boolean;
         };
 
         // 클릭시 과일 생성
@@ -44,9 +45,21 @@ export default function SuikaGameCanvas() {
             const rect = render.canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
 
-            const fruit = Bodies.circle(x, 50, FRUITS[0].radius, { restitution: 0.2,render: {fillStyle: FRUITS[0].color}}) as FruitBody;              // FruitBody 타입으로 변환
+            const level = Math.floor(Math.random() * 2);
 
-            fruit.fruitLevel = 0;
+            const fruit = Bodies.circle(
+                x,
+                50,
+                FRUITS[level].radius,
+                {
+                    restitution: 0.2,
+                    render: {
+                        fillStyle: FRUITS[level].color
+                    }
+                }
+            ) as FruitBody;
+
+            fruit.fruitLevel = level;
             World.add(engine.world, fruit);
         };
 
@@ -60,11 +73,17 @@ export default function SuikaGameCanvas() {
                 const b = pair.bodyB as FruitBody;
 
                 if (a.fruitLevel === undefined || b.fruitLevel === undefined) return;
+
+                if (a.merged || b.merged) return;
+
                 if (a.fruitLevel !== b.fruitLevel) return;
 
                 const level = a.fruitLevel;
 
                 if (level >= FRUITS.length - 1) return;
+
+                a.merged = true;
+                b.merged = true;
 
                 const newLevel = level + 1;
 
