@@ -9,7 +9,6 @@ export default function SuikaGameCanvas() {
     const sceneRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-
         if (!sceneRef.current) return;
 
         const engine = createGameEngine();
@@ -37,11 +36,11 @@ export default function SuikaGameCanvas() {
         type FruitBody = Matter.Body & {
             fruitLevel: number;
             merged?: boolean;
+            mergeLocked?: boolean;
         };
 
         // 클릭시 과일 생성
         const handleClick = (event: MouseEvent) => {
-
             const rect = render.canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
 
@@ -54,59 +53,79 @@ export default function SuikaGameCanvas() {
                 {
                     restitution: 0.2,
                     render: {
-                        fillStyle: FRUITS[level].color
-                    }
+                        fillStyle: FRUITS[level].color,
+                    },
                 }
             ) as FruitBody;
 
             fruit.fruitLevel = level;
+            fruit.merged = false;
+            fruit.mergeLocked = false;
+
             World.add(engine.world, fruit);
         };
 
         render.canvas.addEventListener("click", handleClick);
 
         Events.on(engine, "collisionStart", (event) => {
-
             event.pairs.forEach((pair) => {
-                // 충돌 과일
                 const a = pair.bodyA as FruitBody;
                 const b = pair.bodyB as FruitBody;
 
+                // return 조건 추가
+                // 1. 과일이 아니면 무시
+                // 2. 이미 합쳐졌으면 무시
+                // 3. 잠금 상태면 무시
+                // 4. 같은 레벨만 합체
                 if (a.fruitLevel === undefined || b.fruitLevel === undefined) return;
-
                 if (a.merged || b.merged) return;
-
+                if (a.mergeLocked || b.mergeLocked) return;
                 if (a.fruitLevel !== b.fruitLevel) return;
 
                 const level = a.fruitLevel;
 
+                // 마지막 과일이면 더 이상 합체 안 함
                 if (level >= FRUITS.length - 1) return;
-
-                a.merged = true;
-                b.merged = true;
 
                 const newLevel = level + 1;
 
+                // 새 과일은 두 과일의 중간 위치에 생성
                 const x = (a.position.x + b.position.x) / 2;
                 const y = (a.position.y + b.position.y) / 2;
+
+                // 같은 body가 여러 번 처리되는 것 방지
+                a.merged = true;
+                b.merged = true;
 
                 // 기존 과일 제거
                 World.remove(engine.world, a);
                 World.remove(engine.world, b);
 
-                // 새로운 과일 생성
-                const newFruit = Bodies.circle(x, y, FRUITS[newLevel].radius,
+                // 합쳐진 새 과일 생성
+                const newFruit = Bodies.circle(
+                    x,
+                    y,
+                    FRUITS[newLevel].radius,
                     {
                         restitution: 0.2,
                         render: {
-                            fillStyle: FRUITS[newLevel].color
-                        }
+                            fillStyle: FRUITS[newLevel].color,
+                        },
                     }
                 ) as FruitBody;
 
                 newFruit.fruitLevel = newLevel;
+                newFruit.merged = false;
+
+                // 바로 또 연쇄 합체되는 것 방지
+                newFruit.mergeLocked = true;
 
                 World.add(engine.world, newFruit);
+
+                // 0.25초 뒤 다시 합체 가능하게 풀기
+                setTimeout(() => {
+                    newFruit.mergeLocked = false;
+                }, 250);
             });
         });
 
@@ -114,7 +133,6 @@ export default function SuikaGameCanvas() {
         Render.run(render);
 
         return () => {
-
             render.canvas.removeEventListener("click", handleClick);
 
             Render.stop(render);
