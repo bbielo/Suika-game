@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Bodies, Engine, Render, Runner, World, Events } from "matter-js";
+import { Bodies, Body, Engine, Events, Render, Runner, World, } from "matter-js";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
 import { createGameEngine } from "@/game/engine";
 
@@ -25,33 +25,36 @@ export default function SuikaGameCanvas() {
             },
         });
 
-        // [TODO]: 과일 이미지 삽입
         const FRUITS = [
-            { radius: 20, color: "#ffcc00" },
-            { radius: 30, color: "#ff9900" },
-            { radius: 40, color: "#ff6600" },
+            { name: "blueberry", radius: 12, color: "#4C6FFF" },
+            { name: "strawberry", radius: 16, color: "#FF4D6D" },
+            { name: "lemon", radius: 20, color: "#FFD60A" },
+            { name: "apple", radius: 24, color: "#FF6B6B" },
+            { name: "peach", radius: 28, color: "#FFB4A2" },
+            { name: "orange", radius: 32, color: "#FF922B" },
+            { name: "pineapple", radius: 38, color: "#E9C46A" },
+            { name: "watermelon", radius: 46, color: "#43AA8B" },
         ];
 
-        // fix: Body내 속성에 fruitLevel 생성
-        type FruitBody = Matter.Body & {
+        type FruitBody = Body & {
             fruitLevel: number;
             merged?: boolean;
             mergeLocked?: boolean;
         };
 
-        // 클릭시 과일 생성
-        const handleClick = (event: MouseEvent) => {
-            const rect = render.canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
+        // 초반엔 너무 큰 과일이 바로 안 나오게 처음 4개만 랜덤
+        const SPAWN_LEVEL_COUNT = 4;
 
-            const level = Math.floor(Math.random() * 2);
-
+        const createFruit = (level: number, x: number, y: number) => {
             const fruit = Bodies.circle(
                 x,
-                50,
+                y,
                 FRUITS[level].radius,
                 {
-                    restitution: 0.2,
+                    restitution: 0,
+                    friction: 0.9,
+                    frictionAir: 0.01,
+                    density: 0.002,
                     render: {
                         fillStyle: FRUITS[level].color,
                     },
@@ -62,12 +65,21 @@ export default function SuikaGameCanvas() {
             fruit.merged = false;
             fruit.mergeLocked = false;
 
+            return fruit;
+        };
+
+        // 클릭시 과일 생성
+        const handleClick = (event: MouseEvent) => {
+            const rect = render.canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+
+            const level = Math.floor(Math.random() * SPAWN_LEVEL_COUNT);
+            const fruit = createFruit(level, x, 50);
+
             World.add(engine.world, fruit);
         };
 
-        render.canvas.addEventListener("click", handleClick);
-
-        Events.on(engine, "collisionStart", (event) => {
+        const handleCollision = (event: Matter.IEventCollision<Engine>) => {
             event.pairs.forEach((pair) => {
                 const a = pair.bodyA as FruitBody;
                 const b = pair.bodyB as FruitBody;
@@ -102,38 +114,26 @@ export default function SuikaGameCanvas() {
                 World.remove(engine.world, b);
 
                 // 합쳐진 새 과일 생성
-                const newFruit = Bodies.circle(
-                    x,
-                    y,
-                    FRUITS[newLevel].radius,
-                    {
-                        restitution: 0.2,
-                        render: {
-                            fillStyle: FRUITS[newLevel].color,
-                        },
-                    }
-                ) as FruitBody;
-
-                newFruit.fruitLevel = newLevel;
-                newFruit.merged = false;
-
-                // 바로 또 연쇄 합체되는 것 방지
+                const newFruit = createFruit(newLevel, x, y);
                 newFruit.mergeLocked = true;
 
                 World.add(engine.world, newFruit);
-
-                // 0.25초 뒤 다시 합체 가능하게 풀기
+                
                 setTimeout(() => {
                     newFruit.mergeLocked = false;
                 }, 250);
             });
-        });
+        };
+
+        render.canvas.addEventListener("click", handleClick);
+        Events.on(engine, "collisionStart", handleCollision);
 
         Runner.run(runner, engine);
         Render.run(render);
 
         return () => {
             render.canvas.removeEventListener("click", handleClick);
+            Events.off(engine, "collisionStart", handleCollision);
 
             Render.stop(render);
             Runner.stop(runner);
