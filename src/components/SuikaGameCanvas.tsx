@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Bodies, Body, Engine, Events, Render, Runner, World, } from "matter-js";
+import { useEffect, useRef, useState } from "react";
+import { Bodies, Body, Engine, Events, Render, Runner, World } from "matter-js";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
 import { createGameEngine } from "@/game/engine";
 
 export default function SuikaGameCanvas() {
     const sceneRef = useRef<HTMLDivElement | null>(null);
+    const [score, setScore] = useState(0);
 
     useEffect(() => {
         if (!sceneRef.current) return;
@@ -35,6 +36,8 @@ export default function SuikaGameCanvas() {
             { name: "pineapple", radius: 38, color: "#E9C46A" },
             { name: "watermelon", radius: 46, color: "#43AA8B" },
         ];
+
+        const SCORE_TABLE = [10, 20, 30, 40, 50, 60, 80, 100];
 
         type FruitBody = Body & {
             fruitLevel: number;
@@ -96,29 +99,30 @@ export default function SuikaGameCanvas() {
 
                 const level = a.fruitLevel;
 
-                // 마지막 과일이면 더 이상 합체 안 함
-                if (level >= FRUITS.length - 1) return;
-
-                const newLevel = level + 1;
-
-                // 새 과일은 두 과일의 중간 위치에 생성
                 const x = (a.position.x + b.position.x) / 2;
                 const y = (a.position.y + b.position.y) / 2;
 
-                // 같은 body가 여러 번 처리되는 것 방지
                 a.merged = true;
                 b.merged = true;
 
-                // 기존 과일 제거
                 World.remove(engine.world, a);
                 World.remove(engine.world, b);
 
-                // 합쳐진 새 과일 생성
+                // 점수 추가
+                setScore((prev) => prev + SCORE_TABLE[level]);
+
+                // 마지막 과일이면 새 과일 생성 안 하고 그냥 사라지게
+                if (level >= FRUITS.length - 1) {
+                    return;
+                }
+
+                const newLevel = level + 1;
+
                 const newFruit = createFruit(newLevel, x, y);
                 newFruit.mergeLocked = true;
 
                 World.add(engine.world, newFruit);
-                
+
                 setTimeout(() => {
                     newFruit.mergeLocked = false;
                 }, 250);
@@ -151,7 +155,7 @@ export default function SuikaGameCanvas() {
 
                 <div className="rounded-xl bg-white p-4 shadow">
                     <div className="mb-3 flex justify-between">
-                        <span className="font-semibold">Score: 0</span>
+                        <span className="font-semibold">Score: {score}</span>
                         <button className="rounded bg-red-400 px-3 py-1 text-white">
                             Restart
                         </button>
