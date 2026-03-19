@@ -71,15 +71,57 @@ export default function SuikaGameCanvas() {
             return fruit;
         };
 
-        // 클릭시 과일 생성
-        const handleClick = (event: MouseEvent) => {
+        let mouseX = GAME_WIDTH / 2;
+        let nextLevel = Math.floor(Math.random() * SPAWN_LEVEL_COUNT);
+
+        const getPreviewY = (level: number) => {
+            return FRUITS[level].radius + 12;
+        };
+
+        const clampMouseX = (x: number, level: number) => {
+            const radius = FRUITS[level].radius;
+            const minX = radius + 8;
+            const maxX = GAME_WIDTH - radius - 8;
+
+            if (x < minX) return minX;
+            if (x > maxX) return maxX;
+            return x;
+        };
+
+        const drawPreviewFruit = () => {
+            const context = render.context;
+            const level = nextLevel;
+            const x = clampMouseX(mouseX, level);
+            const y = getPreviewY(level);
+
+            context.save();
+            context.globalAlpha = 0.45;
+            context.beginPath();
+            context.arc(x, y, FRUITS[level].radius, 0, Math.PI * 2);
+            context.fillStyle = FRUITS[level].color;
+            context.fill();
+            context.restore();
+        };
+
+        const afterRender = () => {
+            drawPreviewFruit();
+        };
+
+        const handleMouseMove = (event: MouseEvent) => {
             const rect = render.canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
+            mouseX = event.clientX - rect.left;
+            mouseX = clampMouseX(mouseX, nextLevel);
+        };
+        
+        // 클릭시 과일 생성
+        const handleClick = () => {
+            const x = clampMouseX(mouseX, nextLevel);
+            const y = getPreviewY(nextLevel);
 
-            const level = Math.floor(Math.random() * SPAWN_LEVEL_COUNT);
-            const fruit = createFruit(level, x, 50);
-
+            const fruit = createFruit(nextLevel, x, y);
             World.add(engine.world, fruit);
+
+            nextLevel = Math.floor(Math.random() * SPAWN_LEVEL_COUNT);
         };
 
         const handleCollision = (event: Matter.IEventCollision<Engine>) => {
@@ -129,15 +171,19 @@ export default function SuikaGameCanvas() {
             });
         };
 
+        render.canvas.addEventListener("mousemove", handleMouseMove);
         render.canvas.addEventListener("click", handleClick);
-        Events.on(engine, "collisionStart", handleCollision);
+        Events.on(engine, "collisionActive", handleCollision);
+        Events.on(render, "afterRender", afterRender);
 
         Runner.run(runner, engine);
         Render.run(render);
 
         return () => {
+            render.canvas.removeEventListener("mousemove", handleMouseMove);
             render.canvas.removeEventListener("click", handleClick);
-            Events.off(engine, "collisionStart", handleCollision);
+            Events.off(engine, "collisionActive", handleCollision);
+            Events.off(render, "afterRender", afterRender);
 
             Render.stop(render);
             Runner.stop(runner);
