@@ -5,6 +5,27 @@ import { Bodies, Body, Engine, Events, Render, Runner, World } from "matter-js";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
 import { createGameEngine } from "@/game/engine";
 
+const FRUITS = [
+    { name: "blueberry", radius: 12, color: "#4C6FFF" },
+    { name: "strawberry", radius: 16, color: "#FF4D6D" },
+    { name: "lemon", radius: 20, color: "#FFD60A" },
+    { name: "apple", radius: 24, color: "#FF6B6B" },
+    { name: "peach", radius: 28, color: "#FFB4A2" },
+    { name: "orange", radius: 32, color: "#FF922B" },
+    { name: "pineapple", radius: 38, color: "#E9C46A" },
+    { name: "watermelon", radius: 46, color: "#43AA8B" },
+];
+
+const SCORE_TABLE = [10, 20, 30, 40, 50, 60, 80, 100];
+const SPAWN_LEVEL_COUNT = 4;
+
+type FruitBody = Body & {
+    fruitLevel: number;
+    merged?: boolean;
+    mergeLocked?: boolean;
+    droppedAt?: number;
+};
+
 export default function SuikaGameCanvas() {
     const sceneRef = useRef<HTMLDivElement | null>(null);
     const gameOverRef = useRef(false);
@@ -12,6 +33,11 @@ export default function SuikaGameCanvas() {
     const [score, setScore] = useState(0);
     const [gameOver, setGameOver] = useState(false);
     const [resetTick, setResetTick] = useState(0);
+    const [nextFruit, setNextFruit] = useState(() =>
+        Math.floor(Math.random() * SPAWN_LEVEL_COUNT)
+    );
+
+    const nextFruitRef = useRef(nextFruit);
 
     useEffect(() => {
         if (!sceneRef.current) return;
@@ -32,33 +58,14 @@ export default function SuikaGameCanvas() {
             },
         });
 
-        const FRUITS = [
-            { name: "blueberry", radius: 12, color: "#4C6FFF" },
-            { name: "strawberry", radius: 16, color: "#FF4D6D" },
-            { name: "lemon", radius: 20, color: "#FFD60A" },
-            { name: "apple", radius: 24, color: "#FF6B6B" },
-            { name: "peach", radius: 28, color: "#FFB4A2" },
-            { name: "orange", radius: 32, color: "#FF922B" },
-            { name: "pineapple", radius: 38, color: "#E9C46A" },
-            { name: "watermelon", radius: 46, color: "#43AA8B" },
-        ];
-
-        const SCORE_TABLE = [10, 20, 30, 40, 50, 60, 80, 100];
-
-        type FruitBody = Body & {
-            fruitLevel: number;
-            merged?: boolean;
-            mergeLocked?: boolean;
-            droppedAt?: number;
-        };
-
-        // 초반엔 너무 큰 과일이 바로 안 나오게 처음 4개만 랜덤
-        const SPAWN_LEVEL_COUNT = 4;
-
         const GAME_OVER_LINE_Y = 110;
         const GAME_OVER_GRACE_MS = 1500;
         const GAME_OVER_SPEED_LIMIT = 0.5;
         const GAME_OVER_OFFSET = 8;
+
+        // fix: engine.ts 기준 실제 플레이 가능한 가로 범위 (안쪽경계..)
+        const PLAY_MIN_X = 0;
+        const PLAY_MAX_X = GAME_WIDTH - 32;
 
         const createFruit = (level: number, x: number, y: number) => {
             const fruit = Bodies.circle(
@@ -84,8 +91,8 @@ export default function SuikaGameCanvas() {
             return fruit;
         };
 
-        let mouseX = GAME_WIDTH / 2;
-        let nextLevel = Math.floor(Math.random() * SPAWN_LEVEL_COUNT);
+        let mouseX = (PLAY_MIN_X + PLAY_MAX_X) / 2;
+        let nextLevel = nextFruitRef.current;
 
         const getPreviewY = (level: number) => {
             return FRUITS[level].radius + 12;
@@ -93,8 +100,8 @@ export default function SuikaGameCanvas() {
 
         const clampMouseX = (x: number, level: number) => {
             const radius = FRUITS[level].radius;
-            const minX = radius + 8;
-            const maxX = GAME_WIDTH - radius - 8;
+            const minX = PLAY_MIN_X + radius;
+            const maxX = PLAY_MAX_X - radius;
 
             if (x < minX) return minX;
             if (x > maxX) return maxX;
@@ -123,8 +130,8 @@ export default function SuikaGameCanvas() {
 
             context.save();
             context.beginPath();
-            context.moveTo(0, GAME_OVER_LINE_Y);
-            context.lineTo(GAME_WIDTH, GAME_OVER_LINE_Y);
+            context.moveTo(PLAY_MIN_X, GAME_OVER_LINE_Y);
+            context.lineTo(PLAY_MAX_X, GAME_OVER_LINE_Y);
             context.strokeStyle = "#ff0000";
             context.lineWidth = 2;
             context.setLineDash([8, 6]);
@@ -156,6 +163,8 @@ export default function SuikaGameCanvas() {
             World.add(engine.world, fruit);
 
             nextLevel = Math.floor(Math.random() * SPAWN_LEVEL_COUNT);
+            nextFruitRef.current = nextLevel;
+            setNextFruit(nextLevel);
         };
 
         const checkGameOver = () => {
@@ -166,6 +175,7 @@ export default function SuikaGameCanvas() {
 
             for (const body of bodies) {
                 if (body.fruitLevel === undefined) continue;
+
                 if (body.droppedAt && now - body.droppedAt < GAME_OVER_GRACE_MS) {
                     continue;
                 }
@@ -278,17 +288,37 @@ export default function SuikaGameCanvas() {
                 <div className="rounded-xl bg-white p-4 shadow">
                     <div className="mb-3 flex justify-between">
                         <span className="font-semibold">Score: {score}</span>
-                        <button
-                            className="rounded bg-red-400 px-3 py-1 text-white"
-                            onClick={() => {
-                                setScore(0);
-                                setGameOver(false);
-                                gameOverRef.current = false;
-                                setResetTick((prev) => prev + 1);
-                            }}
-                        >
-                            Restart
-                        </button>
+
+                        <div className="flex items-center gap-4">
+                            <div className="text-center">
+                                <p className="text-xs text-gray-500">Next</p>
+                                <div
+                                    style={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: "50%",
+                                        background: FRUITS[nextFruit].color,
+                                        margin: "0 auto",
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                className="rounded bg-red-400 px-3 py-1 text-white"
+                                onClick={() => {
+                                    const newNext = Math.floor(Math.random() * SPAWN_LEVEL_COUNT);
+
+                                    setScore(0);
+                                    setGameOver(false);
+                                    gameOverRef.current = false;
+                                    nextFruitRef.current = newNext;
+                                    setNextFruit(newNext);
+                                    setResetTick((prev) => prev + 1);
+                                }}
+                            >
+                                Restart
+                            </button>
+                        </div>
                     </div>
 
                     <div className="relative">
