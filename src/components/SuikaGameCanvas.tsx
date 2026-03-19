@@ -11,6 +11,7 @@ export default function SuikaGameCanvas() {
 
     const [score, setScore] = useState(0);
     const [gameOver, setGameOver] = useState(false);
+    const [resetTick, setResetTick] = useState(0);
 
     useEffect(() => {
         if (!sceneRef.current) return;
@@ -267,7 +268,7 @@ export default function SuikaGameCanvas() {
             render.canvas.remove();
             render.textures = {};
         };
-    }, []);
+    }, [resetTick]);
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-neutral-100">
@@ -277,7 +278,15 @@ export default function SuikaGameCanvas() {
                 <div className="rounded-xl bg-white p-4 shadow">
                     <div className="mb-3 flex justify-between">
                         <span className="font-semibold">Score: {score}</span>
-                        <button className="rounded bg-red-400 px-3 py-1 text-white">
+                        <button
+                            className="rounded bg-red-400 px-3 py-1 text-white"
+                            onClick={() => {
+                                setScore(0);
+                                setGameOver(false);
+                                gameOverRef.current = false;
+                                setResetTick((prev) => prev + 1);
+                            }}
+                        >
                             Restart
                         </button>
                     </div>
