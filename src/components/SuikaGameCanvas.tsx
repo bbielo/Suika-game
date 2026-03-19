@@ -7,10 +7,15 @@ import { createGameEngine } from "@/game/engine";
 
 export default function SuikaGameCanvas() {
     const sceneRef = useRef<HTMLDivElement | null>(null);
+    const gameOverRef = useRef(false);
+
     const [score, setScore] = useState(0);
+    const [gameOver, setGameOver] = useState(false);
 
     useEffect(() => {
         if (!sceneRef.current) return;
+
+        gameOverRef.current = false;
 
         const engine = createGameEngine();
         const runner = Runner.create();
@@ -43,10 +48,16 @@ export default function SuikaGameCanvas() {
             fruitLevel: number;
             merged?: boolean;
             mergeLocked?: boolean;
+            droppedAt?: number;
         };
 
         // 초반엔 너무 큰 과일이 바로 안 나오게 처음 4개만 랜덤
         const SPAWN_LEVEL_COUNT = 4;
+
+        const GAME_OVER_LINE_Y = 110;
+        const GAME_OVER_GRACE_MS = 1500;
+        const GAME_OVER_SPEED_LIMIT = 0.5;
+        const GAME_OVER_OFFSET = 8;
 
         const createFruit = (level: number, x: number, y: number) => {
             const fruit = Bodies.circle(
@@ -67,6 +78,7 @@ export default function SuikaGameCanvas() {
             fruit.fruitLevel = level;
             fruit.merged = false;
             fruit.mergeLocked = false;
+            fruit.droppedAt = Date.now();
 
             return fruit;
         };
@@ -89,6 +101,8 @@ export default function SuikaGameCanvas() {
         };
 
         const drawPreviewFruit = () => {
+            if (gameOverRef.current) return;
+
             const context = render.context;
             const level = nextLevel;
             const x = clampMouseX(mouseX, level);
@@ -103,18 +117,37 @@ export default function SuikaGameCanvas() {
             context.restore();
         };
 
+        const drawGameOverLine = () => {
+            const context = render.context;
+
+            context.save();
+            context.beginPath();
+            context.moveTo(0, GAME_OVER_LINE_Y);
+            context.lineTo(GAME_WIDTH, GAME_OVER_LINE_Y);
+            context.strokeStyle = "#ff0000";
+            context.lineWidth = 2;
+            context.setLineDash([8, 6]);
+            context.stroke();
+            context.restore();
+        };
+
         const afterRender = () => {
+            drawGameOverLine();
             drawPreviewFruit();
         };
 
         const handleMouseMove = (event: MouseEvent) => {
+            if (gameOverRef.current) return;
+
             const rect = render.canvas.getBoundingClientRect();
             mouseX = event.clientX - rect.left;
             mouseX = clampMouseX(mouseX, nextLevel);
         };
-        
+
         // 클릭시 과일 생성
         const handleClick = () => {
+            if (gameOverRef.current) return;
+
             const x = clampMouseX(mouseX, nextLevel);
             const y = getPreviewY(nextLevel);
 
@@ -124,7 +157,39 @@ export default function SuikaGameCanvas() {
             nextLevel = Math.floor(Math.random() * SPAWN_LEVEL_COUNT);
         };
 
+        const checkGameOver = () => {
+            if (gameOverRef.current) return;
+
+            const bodies = engine.world.bodies as FruitBody[];
+            const now = Date.now();
+
+            for (const body of bodies) {
+                if (body.fruitLevel === undefined) continue;
+                if (body.droppedAt && now - body.droppedAt < GAME_OVER_GRACE_MS) {
+                    continue;
+                }
+
+                const speed = Math.hypot(body.velocity.x, body.velocity.y);
+                if (speed > GAME_OVER_SPEED_LIMIT) {
+                    continue;
+                }
+
+                const topY = body.bounds.min.y + GAME_OVER_OFFSET;
+
+                if (topY <= GAME_OVER_LINE_Y) {
+                    gameOverRef.current = true;
+                    setGameOver(true);
+
+                    Runner.stop(runner);
+
+                    return;
+                }
+            }
+        };
+
         const handleCollision = (event: Matter.IEventCollision<Engine>) => {
+            if (gameOverRef.current) return;
+
             event.pairs.forEach((pair) => {
                 const a = pair.bodyA as FruitBody;
                 const b = pair.bodyB as FruitBody;
@@ -141,6 +206,11 @@ export default function SuikaGameCanvas() {
 
                 const level = a.fruitLevel;
 
+                // 마지막 과일이면 새 과일 생성 안 하고 그냥 사라지게
+                if (level >= FRUITS.length - 1) {
+                    return;
+                }
+
                 const x = (a.position.x + b.position.x) / 2;
                 const y = (a.position.y + b.position.y) / 2;
 
@@ -153,11 +223,6 @@ export default function SuikaGameCanvas() {
                 // 점수 추가
                 setScore((prev) => prev + SCORE_TABLE[level]);
 
-                // 마지막 과일이면 새 과일 생성 안 하고 그냥 사라지게
-                if (level >= FRUITS.length - 1) {
-                    return;
-                }
-
                 const newLevel = level + 1;
 
                 const newFruit = createFruit(newLevel, x, y);
@@ -169,11 +234,20 @@ export default function SuikaGameCanvas() {
                     newFruit.mergeLocked = false;
                 }, 250);
             });
+
+            checkGameOver();
+        };
+
+        const handleAfterUpdate = () => {
+            if (!gameOverRef.current) {
+                checkGameOver();
+            }
         };
 
         render.canvas.addEventListener("mousemove", handleMouseMove);
         render.canvas.addEventListener("click", handleClick);
         Events.on(engine, "collisionActive", handleCollision);
+        Events.on(engine, "afterUpdate", handleAfterUpdate);
         Events.on(render, "afterRender", afterRender);
 
         Runner.run(runner, engine);
@@ -183,6 +257,7 @@ export default function SuikaGameCanvas() {
             render.canvas.removeEventListener("mousemove", handleMouseMove);
             render.canvas.removeEventListener("click", handleClick);
             Events.off(engine, "collisionActive", handleCollision);
+            Events.off(engine, "afterUpdate", handleAfterUpdate);
             Events.off(render, "afterRender", afterRender);
 
             Render.stop(render);
@@ -207,11 +282,24 @@ export default function SuikaGameCanvas() {
                         </button>
                     </div>
 
-                    <div
-                        ref={sceneRef}
-                        style={{ height: GAME_HEIGHT }}
-                        className="relative overflow-hidden rounded bg-neutral-200"
-                    />
+                    <div className="relative">
+                        <div
+                            ref={sceneRef}
+                            style={{ height: GAME_HEIGHT }}
+                            className="relative overflow-hidden rounded bg-neutral-200"
+                        />
+
+                        {gameOver && (
+                            <div className="absolute inset-0 flex items-center justify-center rounded bg-black/35">
+                                <div className="rounded bg-white px-6 py-4 text-center shadow">
+                                    <p className="text-2xl font-bold text-red-500">GAME OVER</p>
+                                    <p className="mt-2 text-sm text-neutral-700">
+                                        Final Score: {score}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </main>
