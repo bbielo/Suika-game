@@ -10,7 +10,7 @@ export function createFruit(level: number, x: number, y: number) {
         frictionAir: 0.01,
         density: 0.002,
         render: {
-            fillStyle: FRUITS[level].color,
+            visible: false,
         },
     }) as FruitBody;
 

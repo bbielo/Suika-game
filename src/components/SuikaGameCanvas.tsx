@@ -5,8 +5,8 @@ import { Engine, Events, Render, Runner, World } from "matter-js";
 import { GAME_HEIGHT, GAME_WIDTH } from "@/game/constants";
 import { createGameEngine } from "@/game/engine";
 import { FRUITS, getRandomSpawnLevel } from "@/game/fruits";
-import { clampMouseX, getPreviewY } from "@/game/controls";
-import { drawGameOverLine, drawPreviewFruit } from "@/game/renderer";
+import { clampMouseX, getPreviewY } from "@/game/controls"; 
+import { drawGameOverLine, drawPreviewFruit, drawFruits } from "@/game/renderer";
 import { checkGameOver } from "@/game/gameOver";
 import { createFruit, tryMergeFruits } from "@/game/collision";
 import type { FruitBody } from "@/game/types";
@@ -55,6 +55,7 @@ export default function SuikaGameCanvas() {
 
         const afterRender = () => {
             drawGameOverLine(render);
+            drawFruits(render, engine.world.bodies as FruitBody[]);
 
             if (!gameOverRef.current) {
                 drawPreviewFruit(render, mouseX, nextLevel);
